@@ -3,26 +3,22 @@ require 'json'
 require 'addressable/uri'
 require 'nokogiri'
 
-class IceCreamFinder
+class PlaceFinder
   KEY = "AIzaSyCRxtpeDmx_uUGpiD8hbUJ73ZucaNM1VHQ"
 
-  attr_accessor :places, :directions
-
   def initialize
-    @places = []
-    @current_location = nil
-    @directions = nil
+    run
   end
 
   def run
-    @current_location = get_current_loc
+    current_location = get_current_loc
     query = get_query
     puts
-    @places =  places_request(query, @current_location)
-    print_results
+    places =  places_request(query, current_location)
+    print_results(places)
     place_index = get_place_index
-    @directions = directions_request(@places[place_index]["formatted_address"])
-    print_directions
+    directions = directions_request(places[place_index]["formatted_address"], current_location)
+    print_directions(directions)
   end
 
   def get_query # This gets your query and current address, then calls places_request
@@ -51,8 +47,8 @@ class IceCreamFinder
     results["results"] # this peels out all of the actual places that it's found
   end
 
-  def print_results # goes through all 
-    @places.each_with_index do |place, i|
+  def print_results(places) # goes through all 
+    places.each_with_index do |place, i|
       puts (i + 1).to_s + ") " + place["name"]
       puts "    " + place["formatted_address"]
       puts "    " + "Rating: " + place["rating"].to_s if !place["rating"].nil?
@@ -67,13 +63,13 @@ class IceCreamFinder
     place_index
   end
 
-  def directions_request(destination)
+  def directions_request(destination, current_location)
     address = Addressable::URI.new(
       :scheme => "http",
       :host => "maps.googleapis.com",
       :path => "maps/api/directions/json",
       :query_values => {
-        :origin => @current_location,
+        :origin => current_location,
         :destination => destination,
         :sensor => "true",
         :mode => "walking"
@@ -83,18 +79,13 @@ class IceCreamFinder
     JSON::parse(RestClient.get(address))
   end
 
-  def print_directions
-    route = @directions["routes"].first["legs"]
+  def print_directions(directions)
+    route = directions["routes"].first["legs"]
     route_directions = route.first["steps"]
     route_directions.each_with_index do |step,i| 
       puts (i +1).to_s + ") " +  Nokogiri::HTML(step["html_instructions"] + " - " + step["distance"]["text"]).text
     end
     nil
   end
-
 end
-
-# d["routes"].first["legs"].first["steps"].each { |step| puts step["html_instructions"]}
-# Nokogiri::HTML(html).text
-# def x; i = IceCreamFinder.new; i.get_query; i.directions_request("3 Pier #108, San Francisco, CA, United States"); i; end
 
