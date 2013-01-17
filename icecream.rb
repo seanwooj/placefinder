@@ -6,30 +6,33 @@ require 'nokogiri'
 class IceCreamFinder
   KEY = "AIzaSyCRxtpeDmx_uUGpiD8hbUJ73ZucaNM1VHQ"
 
-  attr_accessor :places
+  attr_accessor :places, :directions
 
   def initialize
     @places = []
-    @results = nil
     @current_location = nil
     @directions = nil
   end
 
   def run
+    @current_location = get_current_loc
     query = get_query
-    places_request(query, @current_location)
+    puts
+    @places =  places_request(query, @current_location)
     print_results
     place_index = get_place_index
-    directions_request(@places[place_index]["formatted_address"])
+    @directions = directions_request(@places[place_index]["formatted_address"])
     print_directions
   end
 
   def get_query # This gets your query and current address, then calls places_request
-    puts "What's your address?"
-    @current_location = gets.chomp
-    puts "What do you want to find?"
-    query = gets.chomp
-    query
+    print "What do you want to find? > "
+    gets.chomp
+  end
+
+  def get_current_loc
+    print "What's your address? > "
+    gets.chomp
   end
 
   def places_request(query,address) # this takes in your query and address and returns the .json
@@ -44,8 +47,8 @@ class IceCreamFinder
       }
     ).to_s
 
-    @results = JSON::parse(RestClient.get(address))
-    @places = @results["results"] # this peels out all of the actual places that it's found and assigns it to @places
+    results = JSON::parse(RestClient.get(address))
+    results["results"] # this peels out all of the actual places that it's found
   end
 
   def print_results # goes through all 
@@ -58,18 +61,10 @@ class IceCreamFinder
   end
 
   def get_place_index
-    puts "Input the number of the place for directions:"
+    print "Input the number of the place for directions > "
     place_index = gets.chomp.to_i-1
-    # places = places_request
+    puts
     place_index
-  end
-
-  def place_names
-    @results["results"].map { |place| place["name"] }
-  end
-
-  def place_addresses
-    @results["results"].map { |place| place["formatted_address"] }
   end
 
   def directions_request(destination)
@@ -85,14 +80,14 @@ class IceCreamFinder
       }
     ).to_s
 
-    @directions = JSON::parse(RestClient.get(address))
+    JSON::parse(RestClient.get(address))
   end
 
   def print_directions
     route = @directions["routes"].first["legs"]
     route_directions = route.first["steps"]
     route_directions.each_with_index do |step,i| 
-      puts (i +1).to_s + ") " +  Nokogiri::HTML(step["html_instructions"]).text
+      puts (i +1).to_s + ") " +  Nokogiri::HTML(step["html_instructions"] + " - " + step["distance"]["text"]).text
     end
     nil
   end
